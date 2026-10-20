@@ -1,0 +1,8 @@
+<properties>
+    <!-- 0 = feste Grenze, 1 = Ruhepuls + Aufschlag -->
+    <property id="mode" type="number">1</property>
+    <property id="fixedLimit" type="number">100</property>
+    <property id="offset" type="number">15</property>
+    <property id="delaySec" type="number">20</property>
+    <property id="repeatSec" type="number">60</property>
+</properties>

@@ -1,0 +1,10 @@
+<strings>
+    <string id="AppName">Pacing Alarm</string>
+    <string id="ModeTitle">Grenze</string>
+    <string id="ModeFixed">Feste Grenze</string>
+    <string id="ModeResting">Ruhepuls + Aufschlag</string>
+    <string id="FixedTitle">Feste Grenze (bpm)</string>
+    <string id="OffsetTitle">Aufschlag auf Ruhepuls (bpm)</string>
+    <string id="DelayTitle">Warnung nach (Sekunden über Grenze)</string>
+    <string id="RepeatTitle">Wiederholen alle (Sekunden)</string>
+</strings>

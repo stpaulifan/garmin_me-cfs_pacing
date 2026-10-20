@@ -1,0 +1,39 @@
+# --- Connect IQ Build-Ausgaben ---
+bin/
+build/
+gen/
+mir/
+*.prg
+*.prg.debug.xml
+*.iq
+*.mir
+*-settings.json
+*.json.bak
+ 
+# --- Schlüssel (niemals committen!) ---
+developer_key
+developer_key*
+*.der
+*.pem
+*.key
+ 
+# --- VS Code ---
+# launch.json/tasks.json dürfen ins Repo, persönliche Einstellungen nicht
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+*.code-workspace
+ 
+# --- Claude Code (lokale, persönliche Einstellungen) ---
+.claude/settings.local.json
+ 
+# --- System / Editor ---
+.directory
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.tmp
+*.log
+ 

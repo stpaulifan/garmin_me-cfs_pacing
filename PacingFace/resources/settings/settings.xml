@@ -1,0 +1,20 @@
+<settings>
+    <setting propertyKey="@Properties.style" title="@Strings.StyleTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.StyleDigital</listEntry>
+            <listEntry value="1">@Strings.StyleAnalog</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.mode" title="@Strings.ModeTitle">
+        <settingConfig type="list">
+            <listEntry value="0">@Strings.ModeFixed</listEntry>
+            <listEntry value="1">@Strings.ModeResting</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.fixedLimit" title="@Strings.FixedTitle">
+        <settingConfig type="numeric" min="50" max="200"/>
+    </setting>
+    <setting propertyKey="@Properties.offset" title="@Strings.OffsetTitle">
+        <settingConfig type="numeric" min="0" max="60"/>
+    </setting>
+</settings>
