@@ -15,7 +15,8 @@ Jedes Projekt ist ein eigener Ordner mit eigenem `monkey.jungle` und `manifest.x
 ### `PacingAlarm/` – Geräte-App (watch-app)
 - `PacingMonitor.mc`: `Sensor.enableSensorEvents` (~1×/s), vibriert wenn Puls > Grenze länger als `delaySec` (20 s), wiederholt alle `repeatSec` (60 s). Zählt Sekunden über der Grenze.
 - `PacingView.mc`: gleiches Design wie das Face (über `shared/PacingDraw`): Uhrzeit oben, grosser Puls in Ampelfarbe, "Grenze X  Ruhe Y", "Seit Start m:ss über" (rot während Alarm), Tages-Zeitachse mit eigener `PacingTimeline` (eigener Storage der App). Während eines Alarms (`alerting`) ist der ganze Ring hell.
-- `PacingAlarmApp.mc`: Delegate – nach unten wischen = Grenze +1, nach oben = −1 (schaltet dauerhaft auf feste Grenze).
+- `PacingAlarmApp.mc`: hält Monitor und eine gemeinsame `PacingTimeline` für beide Ansichten. Delegate – nach unten wischen = Grenze +1, nach oben = −1 (schaltet dauerhaft auf feste Grenze), Tippen (`onSelect`) = Verlaufsansicht (`pushView`).
+- `PacingHistoryView.mc`: Verlauf wie beim Garmin-Stressdiagramm. Balken je 15 min (Höhe = Maximalpuls, Farbe = Ampel, grauer Stummel = keine Daten), gestrichelte Grenzlinie mit Wert, Skala automatisch (mind. Grenze −25 bis +10, auf 10 gerundet). Tippen wechselt "Heute" (96 Balken, Beschriftung 0/6/12/18/24) ↔ "Letzte 4 Std" (16 Balken mit Lücken, volle Stunden). Überschrift mit Max, unten Minuten über Grenze heute. Zurück = Standardverhalten (popView). Im Simulator geprüft.
 - Properties: `mode` (0 fest / 1 Ruhepuls+Aufschlag), `fixedLimit`, `offset`, `delaySec`, `repeatSec`.
 - Berechtigungen: `Sensor`, `SensorHistory`, `UserProfile`.
 - **Status:** baut fehlerfrei (`-l 3`), Ansicht im Simulator geprüft (ohne Live-Puls). Vibration noch nicht auf der Uhr getestet.

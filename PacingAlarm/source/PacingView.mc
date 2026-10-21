@@ -9,10 +9,10 @@ class PacingView extends WatchUi.View {
     private var _monitor as PacingMonitor;
     private var _timeline as PacingTimeline;
 
-    function initialize(monitor as PacingMonitor) {
+    function initialize(monitor as PacingMonitor, timeline as PacingTimeline) {
         View.initialize();
         _monitor = monitor;
-        _timeline = new PacingTimeline();
+        _timeline = timeline;
     }
 
     function onUpdate(dc as Dc) as Void {

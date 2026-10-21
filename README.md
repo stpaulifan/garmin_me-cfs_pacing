@@ -39,6 +39,7 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 - Zeigt Grenze, Ruhepuls und die **Zeit über der Grenze seit Start**
 - Während eines Alarms leuchtet der ganze Ring
 - Grenze am Gerät ändern: **nach unten wischen = +1**, **nach oben wischen = −1**
+- **Verlaufsansicht** (ähnlich dem Garmin-Stressdiagramm): **antippen** öffnet ein Balkendiagramm mit einem Balken je 15 Minuten (Höhe = höchster Puls, Farbe = Ampel) und der Grenze als gestrichelte Linie. Erneutes Tippen wechselt zwischen *Heute* und *Letzte 4 Std*, die Zurück-Taste führt zur Hauptansicht.
 
 ## Projektstruktur
 
@@ -53,7 +54,7 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 │   ├── manifest.xml
 │   ├── monkey.jungle
 │   ├── resources/
-│   └── source/           # PacingAlarmApp, PacingMonitor, PacingView
+│   └── source/           # PacingAlarmApp, PacingMonitor, PacingView, PacingHistoryView
 ├── shared/               # von beiden genutzt: PacingDraw (Farben, Ring, Zeitachse), PacingTimeline
 ├── CLAUDE.md             # Projektkontext für Claude Code
 └── README.md
