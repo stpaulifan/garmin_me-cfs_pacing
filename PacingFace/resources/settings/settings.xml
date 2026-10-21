@@ -17,4 +17,10 @@
     <setting propertyKey="@Properties.offset" title="@Strings.OffsetTitle">
         <settingConfig type="numeric" min="0" max="60"/>
     </setting>
+    <setting propertyKey="@Properties.timeline" title="@Strings.TimelineTitle">
+        <settingConfig type="list">
+            <listEntry value="1">@Strings.On</listEntry>
+            <listEntry value="0">@Strings.Off</listEntry>
+        </settingConfig>
+    </setting>
 </settings>

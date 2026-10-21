@@ -19,12 +19,19 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 ### PacingFace (Watchface)
 - Stil **digital** oder **analog**
 - Ampel-Ring, Datum, aktueller Puls / Grenze
+- **Tages-Zeitachse** (ähnlich dem Garmin-Stressdiagramm): schmale Leiste 0–24 Uhr mit 96 Abschnitten à 15 Minuten
+  - Farbe je Abschnitt nach dem höchsten Puls darin: 🟢 unter Grenze −5 · 🟡 bis zur Grenze · 🔴 darüber · grau = keine Daten
+  - Markierungen bei 6, 12 und 18 Uhr, weisser Strich = jetzt
+  - darunter „Heute X Min über Grenze“ (bei Platzmangel gekürzt)
+  - Daten aus dem Garmin-Pulsverlauf (`SensorHistory`), höchstens alle 5 Minuten verarbeitet, Lücken werden nachgefüllt; Reset um Mitternacht
+  - im Always-on-Modus ausgeblendet
 - Stromsparende Always-on-Ansicht (AMOLED)
 - **Einstellungen direkt auf der Uhr:** lange auf das Zifferblatt drücken → *Pacing Face* → *Anpassen*
   - Stil: Digital / Analog
   - Grenze: Ruhepuls + Aufschlag / feste Grenze
   - Aufschlag: +10 / +15 / +20 / +25 / +30 bpm
   - Feste Grenze: 70–140 bpm in 5er-Schritten
+  - Zeitachse: An / Aus
 
 ### PacingAlarm (App)
 - Vibriert, wenn der Puls länger als **20 s** über der Grenze liegt, und wiederholt die Warnung alle **60 s**
@@ -39,7 +46,7 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 │   ├── manifest.xml
 │   ├── monkey.jungle
 │   ├── resources/        # Icon, Texte, Einstellungen (properties.xml)
-│   └── source/           # PacingFaceApp, PacingFaceView, PacingSettings
+│   └── source/           # PacingFaceApp, PacingFaceView, PacingSettings, PacingTimeline
 ├── PacingAlarm/
 │   ├── manifest.xml
 │   ├── monkey.jungle
@@ -59,6 +66,7 @@ In `resources/settings/properties.xml` des jeweiligen Projekts:
 | `mode` | 1 | 0 = feste Grenze, 1 = Ruhepuls + Aufschlag | ✓ | ✓ |
 | `fixedLimit` | 100 | feste Grenze (bpm) | ✓ | ✓ |
 | `offset` | 15 | Aufschlag auf den Ruhepuls (bpm) | ✓ | ✓ |
+| `timeline` | 1 | Tages-Zeitachse: 0 = aus, 1 = an | ✓ | |
 | `delaySec` | 20 | Warnung erst nach … s über der Grenze | | ✓ |
 | `repeatSec` | 60 | Warnung wiederholen alle … s | | ✓ |
 
@@ -88,7 +96,12 @@ done
 
 ## Simulator
 
-In VS Code **F5** drücken, oder `"$SDK/bin/monkeydo" build/PacingFace.prg vivoactive5`. Für den Simulator mit `-d vivoactive5_sim` bauen.
+In VS Code **F5** drücken, oder für den Simulator mit `-d vivoactive5_sim` bauen und laden:
+
+```bash
+"$SDK/bin/monkeyc" -d vivoactive5_sim -f PacingFace/monkey.jungle -o build/PacingFace_sim.prg -y "$KEY" -w
+"$SDK/bin/monkeydo" build/PacingFace_sim.prg vivoactive5
+```
 
 - Puls simulieren: *Simulation → FIT Data → Simulate Data* oder *Activity Data*
 - Einstellungen ändern: *File → Edit Persistent Storage → Edit Application.Properties data*
@@ -123,10 +136,11 @@ Läuft der Simulator, verbindet sich VS Code (F5) bzw. `monkeydo` vom Host autom
 - Die Alarm-App warnt nur, solange sie geöffnet ist. Hintergrunddienste dürfen höchstens alle 5 Minuten laufen, ein Echtzeit-Alarm ist im Hintergrund also nicht möglich.
 - Das Watchface aktualisiert sich im Ruhemodus etwa einmal pro Minute.
 - Der Puls am Handgelenk reagiert bei schnellen Belastungswechseln verzögert.
+- Die Zeitachse zählt die Minuten über der Grenze mit der Grenze, die beim Verarbeiten galt. Wird die Grenze geändert, passen sich die Farben sofort an, die Minuten von früher aber nicht. Die Abstände im Pulsverlauf hängen vom Gerät ab (Lücken über 5 Minuten zählen höchstens 5 Minuten).
 
 ## Ideen
 
 - [ ] Gemeinsame Logik in `shared/` auslagern (`base.sourcePath = source;../shared`)
-- [ ] Tageszusammenfassung „Minuten über Grenze heute“
+- [x] Tageszusammenfassung „Minuten über Grenze heute“ (Zeitachse im Watchface)
 - [ ] Einstellungsmenü auch für die Alarm-App
 - [ ] Body Battery / Stress im Watchface

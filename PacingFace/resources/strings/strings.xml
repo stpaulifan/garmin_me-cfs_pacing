@@ -10,4 +10,7 @@
     <string id="StyleTitle">Stil</string>
     <string id="StyleDigital">Digital</string>
     <string id="StyleAnalog">Analog</string>
+    <string id="TimelineTitle">Zeitachse</string>
+    <string id="On">An</string>
+    <string id="Off">Aus</string>
 </strings>

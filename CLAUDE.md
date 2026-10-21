@@ -21,9 +21,13 @@ Jedes Projekt ist ein eigener Ordner mit eigenem `monkey.jungle` und `manifest.x
 
 ### `PacingFace/` – Watchface
 - `PacingFaceView.mc`: Stil **digital oder analog** (`style` 0/1). Ampel-Ring, Datum, "Puls / Grenze". Always-on/Low-Power-Modus (AMOLED) mit wenig leuchtenden Pixeln. Puls aus `Activity.getActivityInfo().currentHeartRate`, Fallback `ActivityMonitor.getHeartRateHistory`.
-- `PacingSettings.mc`: Modul mit `getNum`, `restingHr`, `computeLimit` + **On-Device-Einstellungsmenü** (`Menu2` via `AppBase.getSettingsView`): Stil, Grenzmodus, Aufschlag (10/15/20/25/30 zyklisch), feste Grenze (70–140 in 5er-Schritten zyklisch).
-- Properties: `style`, `mode`, `fixedLimit`, `offset`.
-- **Status:** erste Version (nur digital) baute erfolgreich. Die neue Version mit Analog + Einstellungsmenü ist **noch nicht kompiliert** – zuerst bauen und Fehler beheben.
+- `PacingSettings.mc`: Modul mit `getNum`, `restingHr`, `computeLimit` + **On-Device-Einstellungsmenü** (`Menu2` via `AppBase.getSettingsView`): Stil, Grenzmodus, Aufschlag (10/15/20/25/30 zyklisch), feste Grenze (70–140 in 5er-Schritten zyklisch), Zeitachse an/aus.
+- `PacingTimeline.mc`: **Tages-Zeitachse**. 96 Abschnitte à 15 min, je Abschnitt Maximalpuls (0 = keine Daten) + Sekunden über Grenze. `Application.Storage`-Schlüssel `tlDay` (Mitternacht, Unix-s), `tlMax`, `tlLast` (letzter verarbeiteter Zeitpunkt), `tlOver`. `update()` aus `onUpdate`, arbeitet höchstens alle 5 min, füllt Lücken über `SensorHistory.getHeartRateHistory` seit `tlLast` nach (in 3-h-Stücken wegen Watchdog; bei Rückstand gleich beim nächsten `onUpdate` weiter). Reset bei neuem `Time.today()`. Lücken zwischen Samples zählen höchstens 5 min als "über Grenze".
+- Zeitachse in der View (`drawTimeline`): Leiste unten, Farben per `ampelColor` mit aktueller Grenze, Zukunft als dünne Linie, Markierungen 6/12/18 Uhr, Jetzt-Strich, Text "Heute X Min über Grenze" mit Kürzungsstufen (`chordWidth`). Im Digitalstil entfällt dann "Puls / Grenze". Im Always-on ausgeblendet.
+- Design: eigene weichere Ampelpalette als Konstanten in `PacingFaceView` (`C_GREEN/C_YELLOW/C_RED/C_NODATA` + dunkle `D_*`-Varianten). Ring = breite dunkle Spur + schmaler heller Ring. Zeitachse auf dunkler Spur mit runden Enden, schwarze Fugen bei 6/12/18 Uhr. Zahlen (Puls, Minuten) farbig, Rest grau (`drawTwoTone`). Analog: Zeiger mit schwarzem Rand, Minutenspitze in Ampelfarbe.
+- Properties: `style`, `mode`, `fixedLimit`, `offset`, `timeline` (0/1, Standard 1).
+- Berechtigungen: `SensorHistory`, `UserProfile`.
+- **Status:** baut für `vivoactive5` und `vivoactive5_sim` fehlerfrei, auch mit `-l 3`. Digitalansicht mit Zeitachse im Simulator geprüft (der Simulator liefert Pulsverlauf). Analog mit Zeitachse und Always-on noch nicht im Simulator angesehen; auf der echten Uhr noch nicht getestet.
 
 ## Wichtige Plattform-Einschränkungen
 
@@ -51,7 +55,7 @@ mkdir -p build
 "$SDK/bin/monkeyc" -d vivoactive5 -f PacingFace/monkey.jungle  -o build/PacingFace.prg  -y ~/.Garmin/ConnectIQ/developer_key -w
 "$SDK/bin/monkeyc" -d vivoactive5 -f PacingAlarm/monkey.jungle -o build/PacingAlarm.prg -y ~/.Garmin/ConnectIQ/developer_key -w
 ```
-Für den Simulator `-d vivoactive5_sim`.
+Für den Simulator `-d vivoactive5_sim` (Ausgabe z. B. `build/PacingFace_sim.prg`). Strengere Typprüfung: `-l 3`.
 
 ### Simulator (läuft in Distrobox!)
 Der Simulator braucht `libwebkit2gtk-4.0.so.37`, die es in Arch nicht mehr gibt. Deshalb läuft er in einer **Distrobox `ciq` (Ubuntu 22.04)** mit `libwebkit2gtk-4.0-37 libjpeg8 libusb-1.0-0 libsm6 libice6 libxext6 libxrender1 libxtst6 libxi6`.
@@ -65,10 +69,9 @@ Puls simulieren: Simulator-Menü *Simulation → FIT Data → Simulate Data* bzw
 Uhr per USB (MTP, Dolphin/kio-extras), `.prg` nach `Internal Storage/GARMIN/APPS/` kopieren, auswerfen.
 
 ## Mögliche nächste Schritte / Ideen
-- Neue PacingFace-Version bauen und Typfehler beheben (Monkey C Type Checker, `-l` Level falls nötig).
+- PacingFace auf der Uhr testen (Zeitachse: Abstände im echten Pulsverlauf, Watchdog beim ersten Nachfüllen).
 - PacingAlarm bauen und im Simulator testen.
 - Evtl. On-Device-Menü auch für PacingAlarm (Verzögerung, Wiederholung).
-- Evtl. Tageszusammenfassung "Minuten über Grenze heute" (Persistenz via `Application.Storage`).
 - Evtl. Body Battery / Stress im Watchface anzeigen.
 - Git-Repo anlegen, `build/` und Keys in `.gitignore`.
 

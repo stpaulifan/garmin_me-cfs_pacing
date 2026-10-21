@@ -5,4 +5,6 @@
     <property id="mode" type="number">1</property>
     <property id="fixedLimit" type="number">100</property>
     <property id="offset" type="number">15</property>
+    <!-- Tages-Zeitachse: 0 = aus, 1 = an -->
+    <property id="timeline" type="number">1</property>
 </properties>

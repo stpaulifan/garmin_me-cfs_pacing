@@ -60,6 +60,10 @@ class PacingSettingsMenu extends WatchUi.Menu2 {
 
         addItem(new WatchUi.MenuItem("Feste Grenze",
             PacingSettings.getNum("fixedLimit", 100).toString() + " bpm", :fixedLimit, null));
+
+        addItem(new WatchUi.ToggleMenuItem("Zeitachse",
+            {:enabled => "An", :disabled => "Aus"},
+            :timeline, PacingSettings.getNum("timeline", 1) == 1, null));
     }
 }
 
@@ -71,9 +75,10 @@ class PacingSettingsDelegate extends WatchUi.Menu2InputDelegate {
     function onSelect(item as WatchUi.MenuItem) as Void {
         var id = item.getId();
 
-        if (id == :style || id == :mode) {
+        if (id == :style || id == :mode || id == :timeline) {
             var on = (item as WatchUi.ToggleMenuItem).isEnabled();
-            Application.Properties.setValue(id == :style ? "style" : "mode", on ? 1 : 0);
+            var key = (id == :style) ? "style" : (id == :mode) ? "mode" : "timeline";
+            Application.Properties.setValue(key, on ? 1 : 0);
 
         } else if (id == :offset) {
             // Zyklisch durch 10, 15, 20, 25, 30
