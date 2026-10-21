@@ -80,7 +80,7 @@ class PacingMonitor {
             if (_tick - _aboveSince >= _delaySec) {
                 alerting = true;
                 if (_lastAlert < 0 || _tick - _lastAlert >= _repeatSec) {
-                    vibrate();
+                    alarmVibrate();
                     _lastAlert = _tick;
                 }
             }
@@ -92,16 +92,7 @@ class PacingMonitor {
         WatchUi.requestUpdate();
     }
 
-    // 0 = ok, 1 = nahe an der Grenze, 2 = darüber
-    function status() as Number {
-        var h = hr;
-        if (h == null) { return 0; }
-        if (h > limit) { return 2; }
-        if (h > limit - 5) { return 1; }
-        return 0;
-    }
-
-    private function vibrate() as Void {
+    private function alarmVibrate() as Void {
         if (Attention has :vibrate) {
             Attention.vibrate([
                 new Attention.VibeProfile(100, 400),

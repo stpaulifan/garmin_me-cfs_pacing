@@ -35,7 +35,9 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 
 ### PacingAlarm (App)
 - Vibriert, wenn der Puls länger als **20 s** über der Grenze liegt, und wiederholt die Warnung alle **60 s**
-- Zeigt Puls, Grenze, Ruhepuls und die gesamte **Zeit über der Grenze**
+- Gleiches Design wie das Watchface: Ampel-Ring, grosser Puls in Ampelfarbe, Uhrzeit, Tages-Zeitachse
+- Zeigt Grenze, Ruhepuls und die **Zeit über der Grenze seit Start**
+- Während eines Alarms leuchtet der ganze Ring
 - Grenze am Gerät ändern: **nach unten wischen = +1**, **nach oben wischen = −1**
 
 ## Projektstruktur
@@ -46,12 +48,13 @@ Zwei Connect-IQ-Apps, die Menschen mit **ME/CFS** beim **Pacing** helfen: den Pu
 │   ├── manifest.xml
 │   ├── monkey.jungle
 │   ├── resources/        # Icon, Texte, Einstellungen (properties.xml)
-│   └── source/           # PacingFaceApp, PacingFaceView, PacingSettings, PacingTimeline
+│   └── source/           # PacingFaceApp, PacingFaceView, PacingSettings
 ├── PacingAlarm/
 │   ├── manifest.xml
 │   ├── monkey.jungle
 │   ├── resources/
 │   └── source/           # PacingAlarmApp, PacingMonitor, PacingView
+├── shared/               # von beiden genutzt: PacingDraw (Farben, Ring, Zeitachse), PacingTimeline
 ├── CLAUDE.md             # Projektkontext für Claude Code
 └── README.md
 ```
@@ -140,7 +143,7 @@ Läuft der Simulator, verbindet sich VS Code (F5) bzw. `monkeydo` vom Host autom
 
 ## Ideen
 
-- [ ] Gemeinsame Logik in `shared/` auslagern (`base.sourcePath = source;../shared`)
+- [x] Gemeinsame Logik in `shared/` auslagern (`base.sourcePath = source;../shared`)
 - [x] Tageszusammenfassung „Minuten über Grenze heute“ (Zeitachse im Watchface)
 - [ ] Einstellungsmenü auch für die Alarm-App
 - [ ] Body Battery / Stress im Watchface

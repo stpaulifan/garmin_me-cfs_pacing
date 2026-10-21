@@ -14,17 +14,21 @@ Jedes Projekt ist ein eigener Ordner mit eigenem `monkey.jungle` und `manifest.x
 
 ### `PacingAlarm/` – Geräte-App (watch-app)
 - `PacingMonitor.mc`: `Sensor.enableSensorEvents` (~1×/s), vibriert wenn Puls > Grenze länger als `delaySec` (20 s), wiederholt alle `repeatSec` (60 s). Zählt Sekunden über der Grenze.
-- `PacingView.mc`: Ampel-Ring, grosser Puls, Grenze + Ruhepuls, Zeit über Grenze.
+- `PacingView.mc`: gleiches Design wie das Face (über `shared/PacingDraw`): Uhrzeit oben, grosser Puls in Ampelfarbe, "Grenze X  Ruhe Y", "Seit Start m:ss über" (rot während Alarm), Tages-Zeitachse mit eigener `PacingTimeline` (eigener Storage der App). Während eines Alarms (`alerting`) ist der ganze Ring hell.
 - `PacingAlarmApp.mc`: Delegate – nach unten wischen = Grenze +1, nach oben = −1 (schaltet dauerhaft auf feste Grenze).
 - Properties: `mode` (0 fest / 1 Ruhepuls+Aufschlag), `fixedLimit`, `offset`, `delaySec`, `repeatSec`.
-- **Status: noch nicht gebaut/getestet.**
+- Berechtigungen: `Sensor`, `SensorHistory`, `UserProfile`.
+- **Status:** baut fehlerfrei (`-l 3`), Ansicht im Simulator geprüft (ohne Live-Puls). Vibration noch nicht auf der Uhr getestet.
+
+### `shared/` – gemeinsamer Code
+Beide `monkey.jungle` haben `base.sourcePath = source;../shared`. Enthält `PacingDraw.mc` (Farben, `ampelColor`, `drawRing`, `drawTwoTone`, `chordWidth`, `drawTimeline`, `timeString`) und `PacingTimeline.mc`.
 
 ### `PacingFace/` – Watchface
 - `PacingFaceView.mc`: Stil **digital oder analog** (`style` 0/1). Ampel-Ring, Datum, "Puls / Grenze". Always-on/Low-Power-Modus (AMOLED) mit wenig leuchtenden Pixeln. Puls aus `Activity.getActivityInfo().currentHeartRate`, Fallback `ActivityMonitor.getHeartRateHistory`.
 - `PacingSettings.mc`: Modul mit `getNum`, `restingHr`, `computeLimit` + **On-Device-Einstellungsmenü** (`Menu2` via `AppBase.getSettingsView`): Stil, Grenzmodus, Aufschlag (10/15/20/25/30 zyklisch), feste Grenze (70–140 in 5er-Schritten zyklisch), Zeitachse an/aus.
-- `PacingTimeline.mc`: **Tages-Zeitachse**. 96 Abschnitte à 15 min, je Abschnitt Maximalpuls (0 = keine Daten) + Sekunden über Grenze. `Application.Storage`-Schlüssel `tlDay` (Mitternacht, Unix-s), `tlMax`, `tlLast` (letzter verarbeiteter Zeitpunkt), `tlOver`. `update()` aus `onUpdate`, arbeitet höchstens alle 5 min, füllt Lücken über `SensorHistory.getHeartRateHistory` seit `tlLast` nach (in 3-h-Stücken wegen Watchdog; bei Rückstand gleich beim nächsten `onUpdate` weiter). Reset bei neuem `Time.today()`. Lücken zwischen Samples zählen höchstens 5 min als "über Grenze".
-- Zeitachse in der View (`drawTimeline`): Leiste unten, Farben per `ampelColor` mit aktueller Grenze, Zukunft als dünne Linie, Markierungen 6/12/18 Uhr, Jetzt-Strich, Text "Heute X Min über Grenze" mit Kürzungsstufen (`chordWidth`). Im Digitalstil entfällt dann "Puls / Grenze". Im Always-on ausgeblendet.
-- Design: eigene weichere Ampelpalette als Konstanten in `PacingFaceView` (`C_GREEN/C_YELLOW/C_RED/C_NODATA` + dunkle `D_*`-Varianten). Ring = breite dunkle Spur + schmaler heller Ring. Zeitachse auf dunkler Spur mit runden Enden, schwarze Fugen bei 6/12/18 Uhr. Zahlen (Puls, Minuten) farbig, Rest grau (`drawTwoTone`). Analog: Zeiger mit schwarzem Rand, Minutenspitze in Ampelfarbe.
+- `shared/PacingTimeline.mc`: **Tages-Zeitachse**. 96 Abschnitte à 15 min, je Abschnitt Maximalpuls (0 = keine Daten) + Sekunden über Grenze. `Application.Storage`-Schlüssel `tlDay` (Mitternacht, Unix-s), `tlMax`, `tlLast` (letzter verarbeiteter Zeitpunkt), `tlOver`. `update()` aus `onUpdate`, arbeitet höchstens alle 5 min, füllt Lücken über `SensorHistory.getHeartRateHistory` seit `tlLast` nach (in 3-h-Stücken wegen Watchdog; bei Rückstand gleich beim nächsten `onUpdate` weiter). Reset bei neuem `Time.today()`. Lücken zwischen Samples zählen höchstens 5 min als "über Grenze".
+- Zeitachse zeichnen (`PacingDraw.drawTimeline`): Leiste unten, Farben per `ampelColor` mit aktueller Grenze, Zukunft als dünne Linie, Markierungen 6/12/18 Uhr, Jetzt-Strich, Text "Heute X Min über Grenze" mit Kürzungsstufen (`chordWidth`). Im Digitalstil entfällt dann "Puls / Grenze". Im Always-on ausgeblendet.
+- Design (`shared/PacingDraw.mc`, Modul für beide Apps): weichere Ampelpalette als Konstanten (`C_GREEN/C_YELLOW/C_RED/C_NODATA` + dunkle `D_*`-Varianten). Ring = breite dunkle Spur + schmaler heller Ring. Zeitachse auf dunkler Spur mit runden Enden, schwarze Fugen bei 6/12/18 Uhr. Zahlen (Puls, Minuten) farbig, Rest grau (`drawTwoTone`). Analog: Zeiger mit schwarzem Rand, Minutenspitze in Ampelfarbe.
 - Properties: `style`, `mode`, `fixedLimit`, `offset`, `timeline` (0/1, Standard 1).
 - Berechtigungen: `SensorHistory`, `UserProfile`.
 - **Status:** baut für `vivoactive5` und `vivoactive5_sim` fehlerfrei, auch mit `-l 3`. Digitalansicht mit Zeitachse im Simulator geprüft (der Simulator liefert Pulsverlauf). Analog mit Zeitachse und Always-on noch nicht im Simulator angesehen; auf der echten Uhr noch nicht getestet.
@@ -55,7 +59,7 @@ mkdir -p build
 "$SDK/bin/monkeyc" -d vivoactive5 -f PacingFace/monkey.jungle  -o build/PacingFace.prg  -y ~/.Garmin/ConnectIQ/developer_key -w
 "$SDK/bin/monkeyc" -d vivoactive5 -f PacingAlarm/monkey.jungle -o build/PacingAlarm.prg -y ~/.Garmin/ConnectIQ/developer_key -w
 ```
-Für den Simulator `-d vivoactive5_sim` (Ausgabe z. B. `build/PacingFace_sim.prg`). Strengere Typprüfung: `-l 3`.
+Release-Build für die Uhr: zusätzlich `-r` (ohne Debug-Infos, deutlich kleiner). Für den Simulator `-d vivoactive5_sim` (Ausgabe z. B. `build/PacingFace_sim.prg`). Strengere Typprüfung: `-l 3`.
 
 ### Simulator (läuft in Distrobox!)
 Der Simulator braucht `libwebkit2gtk-4.0.so.37`, die es in Arch nicht mehr gibt. Deshalb läuft er in einer **Distrobox `ciq` (Ubuntu 22.04)** mit `libwebkit2gtk-4.0-37 libjpeg8 libusb-1.0-0 libsm6 libice6 libxext6 libxrender1 libxtst6 libxi6`.
