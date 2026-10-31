@@ -2,6 +2,7 @@ import Toybox.Application;
 import Toybox.Lang;
 import Toybox.SensorHistory;
 import Toybox.Time;
+import Toybox.Time.Gregorian;
 
 // Tages-Zeitachse ähnlich dem Garmin-Stressdiagramm:
 // 96 Abschnitte à 15 Minuten (0–24 Uhr), je Abschnitt der maximale Puls
@@ -10,6 +11,7 @@ import Toybox.Time;
 class PacingTimeline {
     static const SLOTS = 96;
     static const SLOT_SEC = 900;
+    static const WEEK_SLOTS = 14;
     private const INTERVAL_SEC = 300;     // höchstens alle 5 Minuten verarbeiten
     private const CHUNK_SEC = 3 * 3600;   // Nachfüllen in Stücken (Watchdog-Limit im onUpdate)
     private const MAX_GAP_SEC = 300;      // längere Lücken zwischen Samples nicht als "über Grenze" zählen
@@ -19,18 +21,29 @@ class PacingTimeline {
     private var _lastTs as Number = 0;    // bis hierher ist der Pulsverlauf verarbeitet
     private var _overSec as Number = 0;
     private var _lastRun as Number = 0;   // nicht gespeichert -> erster Aufruf verarbeitet sofort
+    private var _weekDateKeys as Array<String>;
+    private var _weekOverSec as Array<Number>;
 
     function initialize() {
         _max = emptySlots();
+        _weekDateKeys = emptyWeekDates();
+        _weekOverSec = emptyWeekValues();
         var day = Application.Storage.getValue("tlDay");
         var max = Application.Storage.getValue("tlMax");
         var last = Application.Storage.getValue("tlLast");
         var over = Application.Storage.getValue("tlOver");
+        var weekDates = Application.Storage.getValue("tlWeekDates");
+        var weekOver = Application.Storage.getValue("tlWeekOver");
         if (day instanceof Number && max instanceof Array && max.size() == SLOTS) {
             _day = day;
             _max = max as Array<Number>;
             _lastTs = (last instanceof Number) ? last : 0;
             _overSec = (over instanceof Number) ? over : 0;
+        }
+        if (weekDates instanceof Array && weekDates.size() == WEEK_SLOTS &&
+                weekOver instanceof Array && weekOver.size() == WEEK_SLOTS) {
+            _weekDateKeys = weekDates as Array<String>;
+            _weekOverSec = weekOver as Array<Number>;
         }
     }
 
@@ -40,8 +53,10 @@ class PacingTimeline {
         var today = Time.today().value();
         if (today != _day) {
             // Mitternacht: neuer Tag
+            archiveDay();
             _day = today;
             _max = emptySlots();
+            _lastTs = today;
             _overSec = 0;
             _lastRun = 0;
         }
@@ -66,6 +81,69 @@ class PacingTimeline {
 
     function overMinutes() as Number {
         return _overSec / 60;
+    }
+
+    function weekMinutes(daysAgo as Number) as Number {
+        var target = Time.today().value() - daysAgo * 86400;
+        var key = dateKey(target);
+        if (daysAgo == 0) {
+            return hasDayData() ? _overSec / 60 : -1;
+        }
+        for (var i = 0; i < WEEK_SLOTS; i++) {
+            if (_weekDateKeys[i] == key) {
+                return _weekOverSec[i] / 60;
+            }
+        }
+        return -1;
+    }
+
+    function weekDateLabel(daysAgo as Number) as String {
+        var target = Time.today().value() - daysAgo * 86400;
+        var info = Gregorian.info(new Time.Moment(target), Time.FORMAT_SHORT);
+        return info.day.toString();
+    }
+
+    private function archiveDay() as Void {
+        if (!hasDayData()) {
+            return;
+        }
+        var key = dateKey(_day);
+        var index = -1;
+        for (var i = 0; i < WEEK_SLOTS; i++) {
+            if (_weekDateKeys[i] == key) {
+                index = i;
+                break;
+            }
+            if (index < 0 && _weekDateKeys[i] == "") {
+                index = i;
+            }
+        }
+        if (index < 0) {
+            for (var i = 1; i < WEEK_SLOTS; i++) {
+                _weekDateKeys[i - 1] = _weekDateKeys[i];
+                _weekOverSec[i - 1] = _weekOverSec[i];
+            }
+            index = WEEK_SLOTS - 1;
+        }
+        _weekDateKeys[index] = key;
+        _weekOverSec[index] = _overSec;
+    }
+
+    private function hasDayData() as Boolean {
+        if (_lastTs > _day) {
+            return true;
+        }
+        for (var i = 0; i < SLOTS; i++) {
+            if (_max[i] > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function dateKey(timestamp as Number) as String {
+        var info = Gregorian.info(new Time.Moment(timestamp), Time.FORMAT_SHORT);
+        return info.year.toString() + "-" + info.month + "-" + info.day.toString();
     }
 
     // Lücken seit dem letzten verarbeiteten Zeitpunkt aus dem Pulsverlauf nachfüllen.
@@ -139,11 +217,29 @@ class PacingTimeline {
         Application.Storage.setValue("tlMax", _max as Array<Application.Storage.ValueType>);
         Application.Storage.setValue("tlLast", _lastTs);
         Application.Storage.setValue("tlOver", _overSec);
+        Application.Storage.setValue("tlWeekDates", _weekDateKeys as Array<Application.Storage.ValueType>);
+        Application.Storage.setValue("tlWeekOver", _weekOverSec as Array<Application.Storage.ValueType>);
     }
 
     private function emptySlots() as Array<Number> {
         var a = new Array<Number>[SLOTS];
         for (var i = 0; i < SLOTS; i++) {
+            a[i] = 0;
+        }
+        return a;
+    }
+
+    private function emptyWeekDates() as Array<String> {
+        var a = new Array<String>[WEEK_SLOTS];
+        for (var i = 0; i < WEEK_SLOTS; i++) {
+            a[i] = "";
+        }
+        return a;
+    }
+
+    private function emptyWeekValues() as Array<Number> {
+        var a = new Array<Number>[WEEK_SLOTS];
+        for (var i = 0; i < WEEK_SLOTS; i++) {
             a[i] = 0;
         }
         return a;

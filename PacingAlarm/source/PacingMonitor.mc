@@ -2,7 +2,7 @@ import Toybox.Application;
 import Toybox.Attention;
 import Toybox.Lang;
 import Toybox.Sensor;
-import Toybox.UserProfile;
+import Toybox.System;
 import Toybox.WatchUi;
 
 // Liest den Puls jede Sekunde und vibriert, wenn er zu lange über der Grenze liegt.
@@ -15,6 +15,7 @@ class PacingMonitor {
 
     private var _delaySec as Number = 20;
     private var _repeatSec as Number = 60;
+    private var _lastSettingsRefresh as Number = 0;
     private var _tick as Number = 0;
     private var _aboveSince as Number = -1;
     private var _lastAlert as Number = -1;
@@ -30,14 +31,7 @@ class PacingMonitor {
         _delaySec = getNum("delaySec", 20);
         _repeatSec = getNum("repeatSec", 60);
 
-        restingHr = null;
-        var profile = UserProfile.getProfile();
-        if (profile has :restingHeartRate) {
-            var r = profile.restingHeartRate;
-            if (r != null && r > 0) {
-                restingHr = r;
-            }
-        }
+        restingHr = PacingProfile.restingHr();
 
         var rest = restingHr;
         if (mode == 1 && rest != null) {
@@ -45,6 +39,7 @@ class PacingMonitor {
         } else {
             limit = fixed;
         }
+        _lastSettingsRefresh = System.getTimer();
     }
 
     // Grenze am Gerät anpassen (Wischen). Wechselt dauerhaft auf "feste Grenze".
@@ -69,6 +64,10 @@ class PacingMonitor {
     // Wird vom System etwa einmal pro Sekunde aufgerufen.
     function onSensor(info as Sensor.Info) as Void {
         _tick++;
+        var elapsed = System.getTimer() - _lastSettingsRefresh;
+        if (elapsed < 0 || elapsed >= 60000) {
+            loadSettings();
+        }
         hr = info.heartRate;
         var h = hr;
 

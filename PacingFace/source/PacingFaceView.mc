@@ -7,7 +7,6 @@ import Toybox.Math;
 import Toybox.System;
 import Toybox.Time;
 import Toybox.Time.Gregorian;
-import Toybox.UserProfile;
 import Toybox.WatchUi;
 
 // Watchface mit Puls-Ampel: grün = ok, gelb = nahe Grenze, rot = darüber.
@@ -18,6 +17,7 @@ class PacingFaceView extends WatchUi.WatchFace {
     private var _analog as Boolean = false;
     private var _sleeping as Boolean = false;
     private var _showTimeline as Boolean = true;
+    private var _lastSettingsRefresh as Number = 0;
     private var _timeline as PacingTimeline;
 
     function initialize() {
@@ -30,6 +30,7 @@ class PacingFaceView extends WatchUi.WatchFace {
         _analog = PacingSettings.getNum("style", 0) == 1;
         _limit = PacingSettings.computeLimit();
         _showTimeline = PacingSettings.getNum("timeline", 1) == 1;
+        _lastSettingsRefresh = System.getTimer();
     }
 
     // Wird auch nach dem Schliessen des Einstellungsmenüs aufgerufen
@@ -53,6 +54,10 @@ class PacingFaceView extends WatchUi.WatchFace {
         dc.clear();
         if (dc has :setAntiAlias) {
             dc.setAntiAlias(true);
+        }
+        var elapsed = System.getTimer() - _lastSettingsRefresh;
+        if (elapsed < 0 || elapsed >= 60000) {
+            loadSettings();
         }
 
         var hr = currentHr();

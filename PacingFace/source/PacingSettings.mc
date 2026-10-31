@@ -1,6 +1,5 @@
 import Toybox.Application;
 import Toybox.Lang;
-import Toybox.UserProfile;
 import Toybox.WatchUi;
 
 // Gemeinsame Hilfsfunktionen für die Einstellungen
@@ -19,14 +18,7 @@ module PacingSettings {
     }
 
     function restingHr() as Number? {
-        var profile = UserProfile.getProfile();
-        if (profile has :restingHeartRate) {
-            var r = profile.restingHeartRate;
-            if (r != null && r > 0) {
-                return r;
-            }
-        }
-        return null;
+        return PacingProfile.restingHr();
     }
 
     function computeLimit() as Number {

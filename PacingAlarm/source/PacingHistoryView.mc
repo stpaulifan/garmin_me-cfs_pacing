@@ -1,15 +1,16 @@
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.System;
+import Toybox.Time;
 import Toybox.WatchUi;
 
 // Verlaufsansicht ähnlich dem Garmin-Stressdiagramm: ein Balken je 15 Minuten,
 // Höhe = Maximalpuls, Farbe = Ampel, gestrichelte Linie = Grenze.
-// Tippen wechselt zwischen "Heute" (0–24 Uhr) und "Letzte 4 Std".
+// Tippen wechselt zwischen Tages-, Vier-Stunden- und Wochenansicht.
 class PacingHistoryView extends WatchUi.View {
     private var _monitor as PacingMonitor;
     private var _timeline as PacingTimeline;
-    private var _last4h as Boolean = false;
+    private var _range as Number = 0;
 
     function initialize(monitor as PacingMonitor, timeline as PacingTimeline) {
         View.initialize();
@@ -18,7 +19,7 @@ class PacingHistoryView extends WatchUi.View {
     }
 
     function toggleRange() as Void {
-        _last4h = !_last4h;
+        _range = (_range + 1) % 3;
         WatchUi.requestUpdate();
     }
 
@@ -36,13 +37,18 @@ class PacingHistoryView extends WatchUi.View {
         _timeline.update(limit, _monitor.hr);
         PacingDraw.drawRing(dc, PacingDraw.ampelColor(_monitor.hr, limit), _monitor.alerting);
 
+        if (_range == 2) {
+            drawWeek(dc);
+            return;
+        }
+
         // Angezeigter Bereich in Abschnitten
         var clock = System.getClockTime();
         var secOfDay = clock.hour * 3600 + clock.min * 60 + clock.sec;
         var nowSlot = secOfDay / PacingTimeline.SLOT_SEC;
         var first = 0;
         var count = PacingTimeline.SLOTS;
-        if (_last4h) {
+        if (_range == 1) {
             count = 16;
             first = nowSlot - count + 1;
         }
@@ -74,14 +80,14 @@ class PacingHistoryView extends WatchUi.View {
 
         // Überschrift mit Höchstwert
         PacingDraw.drawTwoTone(dc, cx, h * 19 / 100, Graphics.FONT_XTINY,
-            _last4h ? "Letzte 4 Std · Max " : "Heute · Max ",
+            (_range == 1) ? "Letzte 4 Std · Max " : "Heute · Max ",
             (maxHr > 0) ? maxHr.toString() : "--",
             PacingDraw.ampelColor(maxHr > 0 ? maxHr : null, limit), "");
 
         // Hilfslinien: 6/12/18 Uhr bzw. volle Stunden
         dc.setColor(PacingDraw.D_NODATA, Graphics.COLOR_TRANSPARENT);
         for (var i = first + 1; i < first + count; i++) {
-            if (i >= 0 && i % (_last4h ? 4 : 24) == 0) {
+            if (i >= 0 && i % ((_range == 1) ? 4 : 24) == 0) {
                 var xg = x0 + (i - first) * cw / count;
                 dc.fillRectangle(xg, top, 1, ch);
             }
@@ -92,7 +98,7 @@ class PacingHistoryView extends WatchUi.View {
             if (i < 0) { continue; }
             var xa = x0 + (i - first) * cw / count;
             var xb = x0 + (i - first + 1) * cw / count;
-            var gap = _last4h ? 3 : 0;
+            var gap = (_range == 1) ? 3 : 0;
             var v = _timeline.slotMax(i);
             if (v > 0) {
                 var bh = (v - lo) * ch / (hi - lo);
@@ -122,7 +128,7 @@ class PacingHistoryView extends WatchUi.View {
         // Zeitbeschriftung unter der Grundlinie
         var ly = bottom + dc.getFontHeight(Graphics.FONT_XTINY) / 2 + 4;
         dc.setColor(PacingDraw.C_SUBTLE, Graphics.COLOR_TRANSPARENT);
-        if (_last4h) {
+        if (_range == 1) {
             for (var i = first; i <= first + count; i++) {
                 if (i >= 0 && i % 4 == 0) {
                     dc.drawText(x0 + (i - first) * cw / count, ly, Graphics.FONT_XTINY, (i / 4).toString(),
@@ -147,6 +153,70 @@ class PacingHistoryView extends WatchUi.View {
         }
         PacingDraw.drawTwoTone(dc, cx, ty, font, "", over.toString(),
             over > 0 ? PacingDraw.C_RED : PacingDraw.C_GREEN, post);
+    }
+
+    private function drawWeek(dc as Dc) as Void {
+        var w = dc.getWidth();
+        var h = dc.getHeight();
+        var cx = w / 2;
+        var x0 = w * 10 / 100;
+        var cw = w * 80 / 100;
+        var top = h * 31 / 100;
+        var bottom = h * 68 / 100;
+        var ch = bottom - top;
+        var maxMinutes = 0;
+        var totalMinutes = 0;
+        var totalDays = 0;
+
+        for (var i = 6; i >= 0; i--) {
+            var minutes = _timeline.weekMinutes(i);
+            if (minutes >= 0) {
+                if (minutes > maxMinutes) { maxMinutes = minutes; }
+                totalMinutes += minutes;
+                totalDays++;
+            }
+        }
+        if (maxMinutes < 10) { maxMinutes = 10; }
+        var scaleMax = ((maxMinutes + 4) / 5) * 5;
+
+        PacingDraw.drawTwoTone(dc, cx, h * 19 / 100, Graphics.FONT_XTINY,
+            "7 Tage · Min über Grenze", "", Graphics.COLOR_WHITE, "");
+
+        dc.setColor(PacingDraw.D_NODATA, Graphics.COLOR_TRANSPARENT);
+        for (var guide = 1; guide <= 2; guide++) {
+            var gy = bottom - guide * ch / 3;
+            dc.fillRectangle(x0, gy, cw, 1);
+        }
+        dc.setColor(PacingDraw.C_SUBTLE, Graphics.COLOR_TRANSPARENT);
+        dc.fillRectangle(x0, bottom, cw, 1);
+
+        var labelY = bottom + dc.getFontHeight(Graphics.FONT_XTINY) / 2 + 3;
+        for (var dayIndex = 0; dayIndex < 7; dayIndex++) {
+            var daysAgo = 6 - dayIndex;
+            var minutes = _timeline.weekMinutes(daysAgo);
+            var barWidth = cw / 7 - 3;
+            var x = x0 + dayIndex * cw / 7 + 1;
+            if (minutes >= 0) {
+                var barHeight = minutes * ch / scaleMax;
+                if (barHeight < 2) { barHeight = 2; }
+                dc.setColor(minutes > 0 ? PacingDraw.C_RED : PacingDraw.C_GREEN, Graphics.COLOR_TRANSPARENT);
+                dc.fillRectangle(x, bottom - barHeight, barWidth, barHeight);
+                dc.setColor(PacingDraw.C_TEXT, Graphics.COLOR_TRANSPARENT);
+                dc.drawText(x + barWidth / 2, bottom - barHeight - 5, Graphics.FONT_XTINY,
+                    minutes.toString(), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+            } else {
+                dc.setColor(PacingDraw.C_NODATA, Graphics.COLOR_TRANSPARENT);
+                dc.fillRectangle(x, bottom - 2, barWidth, 2);
+            }
+            dc.setColor(PacingDraw.C_SUBTLE, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(x + barWidth / 2, labelY, Graphics.FONT_XTINY,
+                _timeline.weekDateLabel(daysAgo), Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        }
+
+        var footer = (totalDays > 0) ? totalMinutes.toString() + " Min gesamt" : "Keine Daten";
+        dc.setColor(totalMinutes > 0 ? PacingDraw.C_RED : PacingDraw.C_TEXT, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, h * 86 / 100, Graphics.FONT_XTINY, footer,
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
     }
 }
 
