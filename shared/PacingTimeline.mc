@@ -21,7 +21,7 @@ class PacingTimeline {
     private var _lastTs as Number = 0;    // bis hierher ist der Pulsverlauf verarbeitet
     private var _overSec as Number = 0;
     private var _lastRun as Number = 0;   // nicht gespeichert -> erster Aufruf verarbeitet sofort
-    private var _weekDateKeys as Array<String>;
+    private var _weekDateKeys as Array<Number>;   // Datum als JJJJMMTT, 0 = leer
     private var _weekOverSec as Array<Number>;
 
     function initialize() {
@@ -32,7 +32,7 @@ class PacingTimeline {
         var max = Application.Storage.getValue("tlMax");
         var last = Application.Storage.getValue("tlLast");
         var over = Application.Storage.getValue("tlOver");
-        var weekDates = Application.Storage.getValue("tlWeekDates");
+        var weekDates = Application.Storage.getValue("tlWeekKeys");
         var weekOver = Application.Storage.getValue("tlWeekOver");
         if (day instanceof Number && max instanceof Array && max.size() == SLOTS) {
             _day = day;
@@ -42,7 +42,7 @@ class PacingTimeline {
         }
         if (weekDates instanceof Array && weekDates.size() == WEEK_SLOTS &&
                 weekOver instanceof Array && weekOver.size() == WEEK_SLOTS) {
-            _weekDateKeys = weekDates as Array<String>;
+            _weekDateKeys = weekDates as Array<Number>;
             _weekOverSec = weekOver as Array<Number>;
         }
     }
@@ -52,7 +52,18 @@ class PacingTimeline {
         var now = Time.now().value();
         var today = Time.today().value();
         if (today != _day) {
-            // Mitternacht: neuer Tag
+            // Mitternacht: alten Tag erst bis zu seinem Ende aus dem Pulsverlauf
+            // vervollständigen (in Stücken, Watchdog), dann archivieren
+            if (_day > 0 && hasDayData()) {
+                var dayEnd = _day + 86400;
+                if (dayEnd > today) {
+                    dayEnd = today;   // Tag mit 23 Stunden (Zeitumstellung)
+                }
+                if (!fillFromHistory(dayEnd, limit)) {
+                    save();
+                    return;   // beim nächsten onUpdate weiter
+                }
+            }
             archiveDay();
             _day = today;
             _max = emptySlots();
@@ -84,11 +95,10 @@ class PacingTimeline {
     }
 
     function weekMinutes(daysAgo as Number) as Number {
-        var target = Time.today().value() - daysAgo * 86400;
-        var key = dateKey(target);
         if (daysAgo == 0) {
             return hasDayData() ? _overSec / 60 : -1;
         }
+        var key = dateKey(dayMoment(daysAgo));
         for (var i = 0; i < WEEK_SLOTS; i++) {
             if (_weekDateKeys[i] == key) {
                 return _weekOverSec[i] / 60;
@@ -98,9 +108,14 @@ class PacingTimeline {
     }
 
     function weekDateLabel(daysAgo as Number) as String {
-        var target = Time.today().value() - daysAgo * 86400;
-        var info = Gregorian.info(new Time.Moment(target), Time.FORMAT_SHORT);
+        var info = Gregorian.info(new Time.Moment(dayMoment(daysAgo)), Time.FORMAT_SHORT);
         return info.day.toString();
+    }
+
+    // Mittag des Tages vor daysAgo Tagen – Mittag, damit Zeitumstellungen
+    // (23/25-Stunden-Tage) nicht auf den Nachbartag verschieben
+    private function dayMoment(daysAgo as Number) as Number {
+        return Time.today().value() + 12 * 3600 - daysAgo * 86400;
     }
 
     private function archiveDay() as Void {
@@ -114,7 +129,7 @@ class PacingTimeline {
                 index = i;
                 break;
             }
-            if (index < 0 && _weekDateKeys[i] == "") {
+            if (index < 0 && _weekDateKeys[i] == 0) {
                 index = i;
             }
         }
@@ -141,12 +156,14 @@ class PacingTimeline {
         return false;
     }
 
-    private function dateKey(timestamp as Number) as String {
+    // Zahl statt String: == vergleicht bei Strings nicht zuverlässig den Inhalt
+    private function dateKey(timestamp as Number) as Number {
         var info = Gregorian.info(new Time.Moment(timestamp), Time.FORMAT_SHORT);
-        return info.year.toString() + "-" + info.month + "-" + info.day.toString();
+        return info.year * 10000 + (info.month as Number) * 100 + info.day;
     }
 
-    // Lücken seit dem letzten verarbeiteten Zeitpunkt aus dem Pulsverlauf nachfüllen.
+    // Lücken seit dem letzten verarbeiteten Zeitpunkt bis "now" aus dem Pulsverlauf
+    // nachfüllen ("now" kann beim Tageswechsel das Ende des alten Tages sein).
     // Gibt false zurück, wenn noch nicht alles aufgeholt ist.
     private function fillFromHistory(now as Number, limit as Number) as Boolean {
         if (!(Toybox has :SensorHistory) || !(SensorHistory has :getHeartRateHistory)) {
@@ -163,7 +180,7 @@ class PacingTimeline {
         }
 
         var iter = SensorHistory.getHeartRateHistory({
-            :period => new Time.Duration(now - since),
+            :period => new Time.Duration(Time.now().value() - since),
             :order => SensorHistory.ORDER_OLDEST_FIRST
         });
         var prev = since;
@@ -217,7 +234,7 @@ class PacingTimeline {
         Application.Storage.setValue("tlMax", _max as Array<Application.Storage.ValueType>);
         Application.Storage.setValue("tlLast", _lastTs);
         Application.Storage.setValue("tlOver", _overSec);
-        Application.Storage.setValue("tlWeekDates", _weekDateKeys as Array<Application.Storage.ValueType>);
+        Application.Storage.setValue("tlWeekKeys", _weekDateKeys as Array<Application.Storage.ValueType>);
         Application.Storage.setValue("tlWeekOver", _weekOverSec as Array<Application.Storage.ValueType>);
     }
 
@@ -229,10 +246,10 @@ class PacingTimeline {
         return a;
     }
 
-    private function emptyWeekDates() as Array<String> {
-        var a = new Array<String>[WEEK_SLOTS];
+    private function emptyWeekDates() as Array<Number> {
+        var a = new Array<Number>[WEEK_SLOTS];
         for (var i = 0; i < WEEK_SLOTS; i++) {
-            a[i] = "";
+            a[i] = 0;
         }
         return a;
     }
